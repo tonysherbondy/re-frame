@@ -162,3 +162,8 @@
   :<- [:completed-count]
   (fn [[todos completed] _]
     [(- (count todos) completed) completed]))
+
+(reg-sub
+  :my-example-2-data
+  (fn [db _]
+    (:my-example-2-data db)))

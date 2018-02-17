@@ -1,7 +1,10 @@
 (ns todomvc.views
   (:require [reagent.core  :as reagent]
             [re-frame.core :refer [subscribe dispatch]]
-            [clojure.string :as str]))
+            [clojure.string :as str])
+  (:import
+        (goog.i18n NumberFormat)
+        (goog.i18n.NumberFormat Format)))
 
 
 (defn todo-input [{:keys [title on-save on-stop]}]
@@ -93,10 +96,65 @@
        :placeholder "What needs to be done?"
        :on-save #(dispatch [:add-todo %])}]])
 
+(defn remove-commas [str]
+  (when str
+    (str/replace str #"\," "")))
+
+(defn ->float
+  ([float-str] (->float float-str nil))
+  ([float-str default]
+   (if (number? float-str)
+     (float float-str)
+     (let [s (remove-commas float-str)
+           n (js/parseFloat s)]
+       (if-not (js/isNaN n)
+         n
+         default)))))
+
+(defn format-number
+  ([x] (format-number x 1))
+  ([x n-decimals]
+   (let [fmt (doto (NumberFormat. Format.DECIMAL)
+               (.setMaximumFractionDigits n-decimals)
+               (.setMinimumFractionDigits n-decimals))]
+     (.format fmt x))))
+
+(defn dollar-input [{:keys [initial-value on-change]}]
+  (let [text-value (reagent/atom (when initial-value
+                                   (format-number initial-value 2)))]
+    (fn []
+      [:div.dollar-input
+       [:span.dollar-sign "$"]
+       [:input {:value     @text-value
+                :type      "text"
+                :on-change (fn [e]
+                             (let [new-text (.-target.value e)]
+                               (when (re-matches #"[0-9\,]*\.?[0-9]*" new-text)
+                                 (reset! text-value new-text))))
+                :on-blur   (fn [e]
+                             (let [dollar-value (->float (.-target.value e))]
+                               (when (some? dollar-value)
+                                 (reset! text-value (format-number dollar-value 2)))
+                               (when on-change
+                                 (on-change dollar-value))))}]])))
+
+(defn my-example-2 []
+  (let [my-data @(subscribe [:my-example-2-data])]
+    [:div
+     [:h1 "My Example 2"]
+     [:p (with-out-str (cljs.pprint/pprint my-data))]
+     [:input {:value     (:other-value my-data)
+              :on-change #(dispatch [:set-my-example-2-data
+                                     (assoc my-data :other-value (.-target.value %))])}]
+     [dollar-input {:initial-value (:amount my-data)
+                    :on-change     (fn [v]
+                                     (dispatch [:set-my-example-2-data
+                                                (assoc my-data :amount v)]))}]]))
 
 (defn todo-app
   []
   [:div
+   [my-example-2]
    [:section#todoapp
     [task-entry]
     (when (seq @(subscribe [:todos]))

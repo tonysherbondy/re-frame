@@ -189,3 +189,8 @@
       (reduce #(assoc-in %1 [%2 :done] new-done)
               todos
               (keys todos)))))
+
+(reg-event-db
+  :set-my-example-2-data
+  (fn [db [_ d]]
+    (assoc db :my-example-2-data d)))
