@@ -96,47 +96,17 @@
        :placeholder "What needs to be done?"
        :on-save #(dispatch [:add-todo %])}]])
 
-(defn remove-commas [str]
-  (when str
-    (str/replace str #"\," "")))
-
-(defn ->float
-  ([float-str] (->float float-str nil))
-  ([float-str default]
-   (if (number? float-str)
-     (float float-str)
-     (let [s (remove-commas float-str)
-           n (js/parseFloat s)]
-       (if-not (js/isNaN n)
-         n
-         default)))))
-
-(defn format-number
-  ([x] (format-number x 1))
-  ([x n-decimals]
-   (let [fmt (doto (NumberFormat. Format.DECIMAL)
-               (.setMaximumFractionDigits n-decimals)
-               (.setMinimumFractionDigits n-decimals))]
-     (.format fmt x))))
-
-(defn dollar-input [{:keys [initial-value on-change]}]
-  (let [text-value (reagent/atom (when initial-value
-                                   (format-number initial-value 2)))]
+(defn capture-input [{:keys [initial-value on-change]}]
+  (let [text-value (reagent/atom initial-value)]
     (fn []
       [:div.dollar-input
        [:span.dollar-sign "$"]
        [:input {:value     @text-value
                 :type      "text"
                 :on-change (fn [e]
-                             (let [new-text (.-target.value e)]
-                               (when (re-matches #"[0-9\,]*\.?[0-9]*" new-text)
-                                 (reset! text-value new-text))))
+                             (reset! text-value (.-target.value e)))
                 :on-blur   (fn [e]
-                             (let [dollar-value (->float (.-target.value e))]
-                               (when (some? dollar-value)
-                                 (reset! text-value (format-number dollar-value 2)))
-                               (when on-change
-                                 (on-change dollar-value))))}]])))
+                             (on-change (.-target.value e)))}]])))
 
 (defn my-example-2 []
   (let [my-data @(subscribe [:my-example-2-data])]
@@ -146,8 +116,8 @@
      [:input {:value     (:other-value my-data)
               :on-change #(dispatch [:set-my-example-2-data
                                      (assoc my-data :other-value (.-target.value %))])}]
-     [dollar-input {:initial-value (:amount my-data)
-                    :on-change     (fn [v]
+     [capture-input {:initial-value (:amount my-data)
+                    :on-change      (fn [v]
                                      (dispatch [:set-my-example-2-data
                                                 (assoc my-data :amount v)]))}]]))
 
